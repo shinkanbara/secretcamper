@@ -20,7 +20,7 @@
             overflow: hidden;
             cursor: pointer;
             user-select: none;
-            touch-action: manipulation; /* スマホのタップを爆速・正確にする魔法 */
+            touch-action: manipulation;
         }
 
         .main-message {
@@ -51,7 +51,7 @@
         .secret-link { color: inherit; text-decoration: none; cursor: default; }
     </style>
 </head>
-<body onclick="handleInteraction(event)">
+<body>
 
     <div class="main-message">
         <p>今日も一日お疲れさまでした</p>
@@ -60,6 +60,10 @@
         <p>何もしなくていい</p>
         <p>ただそこにいて</p>
         <p class="quiet">(なるべくここにいる)<a href="secret.html" class="secret-link">。</a></p>
+    </div>
+
+    <div style="margin-top: 50px;">
+        <a href="secret.html" style="text-decoration: none;">🏕️</a>
     </div>
 
     <script>
@@ -79,60 +83,72 @@
 
         let currentAudio = null;
         let fadeInterval = null;
+        let isPlaying = false; // スマホが勘違いしないための確実な目印
 
-        function handleInteraction(e) {
-            // リンクを押した時は音のオンオフをしない
-            if (e && e.target.tagName.toLowerCase() === 'a') return;
-
-            if (currentAudio && !currentAudio.paused) {
+        function handleInteraction() {
+            if (isPlaying) {
                 fadeOutAndStop();
-                return;
+            } else {
+                playRandomSound();
             }
+        }
 
+        function playRandomSound() {
+            isPlaying = true; // 鳴らし始めたよ！という目印
             const randomIndex = Math.floor(Math.random() * soundList.length);
-            const selectedSound = soundList[randomIndex];
-
-            const audio = new Audio(selectedSound);
-            audio.loop = true;
-            audio.volume = 0;
             
-            audio.play().catch(e => console.error("再生エラー：", e));
+            currentAudio = new Audio(soundList[randomIndex]);
+            currentAudio.loop = true;
+            currentAudio.volume = 0;
+            
+            currentAudio.play().catch(e => {
+                console.error("再生エラー：", e);
+                isPlaying = false; // 失敗したら目印を戻す
+            });
 
             clearInterval(fadeInterval);
             fadeInterval = setInterval(() => {
-                if (audio.volume < 0.29) {
-                    audio.volume = parseFloat((audio.volume + 0.01).toFixed(2));
-                } else {
-                    audio.volume = 0.3; 
+                if (currentAudio && currentAudio.volume < 0.29) {
+                    currentAudio.volume = parseFloat((currentAudio.volume + 0.01).toFixed(2));
+                } else if (currentAudio) {
+                    currentAudio.volume = 0.3; 
                     clearInterval(fadeInterval);
                 }
             }, 50);
-
-            currentAudio = audio;
         }
 
         function fadeOutAndStop() {
+            isPlaying = false; // 止めるよ！という目印
             if (!currentAudio) return;
+            
             const audioToStop = currentAudio;
+            currentAudio = null; // 次のタップですぐ新しい音が鳴るように切り離す
             clearInterval(fadeInterval);
             
-            fadeInterval = setInterval(() => {
+            let outInterval = setInterval(() => {
                 if (audioToStop.volume > 0.01) {
                     audioToStop.volume = parseFloat((audioToStop.volume - 0.01).toFixed(2));
                 } else {
                     audioToStop.pause();
                     audioToStop.currentTime = 0;
-                    clearInterval(fadeInterval);
+                    clearInterval(outInterval);
                 }
             }, 50); 
         }
 
-        // スマホで画面を閉じた・裏に回した時は【即座に】止める
+        // 画面全体に「クリック（タップ）」を監視する透明な魔法をかけたよ
+        document.addEventListener('click', function(e) {
+            // もしタップしたのが「リンク(aタグ)」なら、音の再生・停止はしない
+            if (e.target.closest('a')) return;
+            handleInteraction();
+        });
+
         function immediateStop() {
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio.currentTime = 0;
                 clearInterval(fadeInterval);
+                isPlaying = false;
             }
         }
 
@@ -141,10 +157,6 @@
         });
         window.addEventListener("pagehide", immediateStop);
     </script>
-
-    <div style="margin-top: 50px;">
-        <a href="secret.html" style="text-decoration: none;">🏕️</a>
-    </div>
 
 </body>
 </html>
