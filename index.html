@@ -6,47 +6,17 @@
     <title>瞼の裏の土と星</title>
     <style>
         body {
-            background-color: #0a0f1e;
-            color: #fff8e1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            width: 100vw;
-            margin: 0;
-            font-family: "Inter", "Helvetica Neue", "Arial", "Hiragino Sans", "Meiryo", sans-serif;
-            font-weight: 200;
-            overflow: hidden;
-            cursor: pointer;
-            user-select: none;
+            background-color: #0a0f1e; color: #fff8e1;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            min-height: 100vh; width: 100vw; margin: 0;
+            font-family: "Inter", sans-serif; font-weight: 200;
+            overflow: hidden; cursor: pointer; user-select: none;
             touch-action: manipulation;
         }
-
-        .main-message {
-            text-align: center;
-            opacity: 0;
-            animation: fadeIn 6s ease-in-out forwards;
-        }
-
-        @keyframes fadeIn {
-            0% { opacity: 0; transform: translateY(5px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        p {
-            font-size: 1rem;
-            line-height: 2.8;
-            letter-spacing: 0.2em;
-            margin: 0;
-        }
-
-        .quiet {
-            margin-top: 40px;
-            font-size: 0.85rem;
-            color: rgba(255, 248, 225, 0.35);
-            font-weight: 100;
-        }
+        .main-message { text-align: center; opacity: 0; animation: fadeIn 6s ease-in-out forwards; }
+        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(5px); } 100% { opacity: 1; transform: translateY(0); } }
+        p { font-size: 1rem; line-height: 2.8; letter-spacing: 0.2em; margin: 0; }
+        .quiet { margin-top: 40px; font-size: 0.85rem; color: rgba(255, 248, 225, 0.35); }
     </style>
 </head>
 <body>
@@ -71,76 +41,58 @@
             "room_ambient_03.mp3", "room_ambient_04.mp3", "library_1.mp3"
         ];
 
-        let currentAudio = null;
+        let audio = null;
         let fadeInterval = null;
 
-        // 全ての音を「今すぐ」抹殺する関数
-        function killAllSounds() {
+        // 音を完全に消し去る（重複・残響防止）
+        function stopAndClear() {
             clearInterval(fadeInterval);
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.src = ""; // ソースを空にしてメモリからも消す
-                currentAudio.load();
-                currentAudio = null;
+            if (audio) {
+                audio.pause();
+                audio.src = ""; // データを空にする
+                audio.load();   // 読み込みをリセット
+                audio = null;
             }
         }
 
         function handleInteraction() {
-            // もし鳴ってたら消す、鳴ってなかったら次を鳴らす
-            if (currentAudio && !currentAudio.paused) {
-                fadeOutAndStop();
+            // すでに音が鳴っている（＝audioが存在する）なら止める
+            if (audio) {
+                stopAndClear();
             } else {
-                playRandomSound();
+                playNext();
             }
         }
 
-        function playRandomSound() {
-            killAllSounds(); // 再生前に必ず全リセット（重複防止）
+        function playNext() {
+            stopAndClear(); // 念のため実行
 
             const randomIndex = Math.floor(Math.random() * soundList.length);
-            currentAudio = new Audio(soundList[randomIndex]);
-            currentAudio.loop = true;
-            currentAudio.volume = 0;
+            audio = new Audio(soundList[randomIndex]);
+            audio.loop = true;
+            audio.volume = 0;
             
-            currentAudio.play().catch(e => console.log("再生不可:", e));
+            audio.play().catch(e => console.log("再生制限中"));
 
+            // 音量は控えめの 0.1 ターゲット
             fadeInterval = setInterval(() => {
-                if (currentAudio && currentAudio.volume < 0.24) {
-                    currentAudio.volume = parseFloat((currentAudio.volume + 0.01).toFixed(2));
+                if (audio && audio.volume < 1.9) {
+                    audio.volume = parseFloat((audio.volume + 0.01).toFixed(2));
                 } else {
                     clearInterval(fadeInterval);
                 }
             }, 50);
         }
 
-        function fadeOutAndStop() {
-            if (!currentAudio) return;
-            clearInterval(fadeInterval);
-            
-            const audioToStop = currentAudio;
-            // フェードアウト中も次のクリックを受け付けられるように currentAudio は先に空にする
-            currentAudio = null; 
-
-            let outInterval = setInterval(() => {
-                if (audioToStop.volume > 0.02) {
-                    audioToStop.volume = parseFloat((audioToStop.volume - 0.02).toFixed(2));
-                } else {
-                    audioToStop.pause();
-                    audioToStop.src = "";
-                    clearInterval(outInterval);
-                }
-            }, 50); 
-        }
-
-        document.addEventListener('click', function(e) {
+        // 画面全体のクリックを監視
+        document.addEventListener('click', (e) => {
             if (e.target.closest('a')) return;
             handleInteraction();
-        });
+        }, false);
 
-        // スマホ対策：ページを閉じたり隠したりした瞬間「即死」させる
-        document.addEventListener("visibilitychange", () => { if (document.visibilityState === 'hidden') killAllSounds(); });
-        window.addEventListener("pagehide", killAllSounds);
-        window.addEventListener("blur", killAllSounds); // ブラウザから離れた瞬間も止める
+        // スマホが閉じられたら即座に抹殺
+        window.addEventListener("pagehide", stopAndClear);
+        window.addEventListener("visibilitychange", () => { if (document.hidden) stopAndClear(); });
     </script>
 </body>
 </html>
