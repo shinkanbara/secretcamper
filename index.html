@@ -63,7 +63,7 @@
                 audio.play().catch(err => console.log("再生制限"));
 
                 fadeInterval = setInterval(() => {
-                    if (audio && audio.volume < 0.05) { // 音量をさらに控えめに(0.05)
+                    if (audio && audio.volume < 0.9) { // 音量をさらに控えめに(0.9)
                         audio.volume = parseFloat((audio.volume + 0.01).toFixed(2));
                     } else { clearInterval(fadeInterval); }
                 }, 50);
