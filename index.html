@@ -47,8 +47,6 @@
             color: rgba(255, 248, 225, 0.35);
             font-weight: 100;
         }
-
-        .secret-link { color: inherit; text-decoration: none; cursor: default; }
     </style>
 </head>
 <body>
@@ -59,7 +57,7 @@
         <p>時間が過ぎるのを待つ場所です</p>
         <p>何もしなくていい</p>
         <p>ただそこにいて</p>
-        <p class="quiet">(なるべくここにいる)<a href="secret.html" class="secret-link">。</a></p>
+        <p class="quiet">(なるべくここにいる)<a href="secret.html" style="color:inherit; text-decoration:none;">。</a></p>
     </div>
 
     <div style="margin-top: 50px;">
@@ -68,25 +66,28 @@
 
     <script>
         const soundList = [
-            "Wind_04.mp3",
-            "rain_03.mp3",
-            "morning_01.mp3",
-            "landscape_03.mp3",
-            "river_04.mp3",
-            "forest.mp3",
-            "wave_35.mp3",
-            "child_playing.mp3",
-            "room_ambient_03.mp3",
-            "room_ambient_04.mp3",
-            "library_1.mp3",
+            "Wind_04.mp3", "rain_03.mp3", "morning_01.mp3", "landscape_03.mp3",
+            "river_04.mp3", "forest.mp3", "wave_35.mp3", "child_playing.mp3",
+            "room_ambient_03.mp3", "room_ambient_04.mp3", "library_1.mp3"
         ];
 
         let currentAudio = null;
         let fadeInterval = null;
-        let isPlaying = false; // スマホが勘違いしないための確実な目印
+
+        // 全ての音を「今すぐ」抹殺する関数
+        function killAllSounds() {
+            clearInterval(fadeInterval);
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.src = ""; // ソースを空にしてメモリからも消す
+                currentAudio.load();
+                currentAudio = null;
+            }
+        }
 
         function handleInteraction() {
-            if (isPlaying) {
+            // もし鳴ってたら消す、鳴ってなかったら次を鳴らす
+            if (currentAudio && !currentAudio.paused) {
                 fadeOutAndStop();
             } else {
                 playRandomSound();
@@ -94,69 +95,52 @@
         }
 
         function playRandomSound() {
-            isPlaying = true; // 鳴らし始めたよ！という目印
+            killAllSounds(); // 再生前に必ず全リセット（重複防止）
+
             const randomIndex = Math.floor(Math.random() * soundList.length);
-            
             currentAudio = new Audio(soundList[randomIndex]);
             currentAudio.loop = true;
             currentAudio.volume = 0;
             
-            currentAudio.play().catch(e => {
-                console.error("再生エラー：", e);
-                isPlaying = false; // 失敗したら目印を戻す
-            });
+            currentAudio.play().catch(e => console.log("再生不可:", e));
 
-            clearInterval(fadeInterval);
             fadeInterval = setInterval(() => {
                 if (currentAudio && currentAudio.volume < 0.19) {
                     currentAudio.volume = parseFloat((currentAudio.volume + 0.01).toFixed(2));
-                } else if (currentAudio) {
-                    currentAudio.volume = 0.2; 
+                } else {
                     clearInterval(fadeInterval);
                 }
             }, 50);
         }
 
         function fadeOutAndStop() {
-            isPlaying = false; // 止めるよ！という目印
             if (!currentAudio) return;
-            
-            const audioToStop = currentAudio;
-            currentAudio = null; // 次のタップですぐ新しい音が鳴るように切り離す
             clearInterval(fadeInterval);
             
+            const audioToStop = currentAudio;
+            // フェードアウト中も次のクリックを受け付けられるように currentAudio は先に空にする
+            currentAudio = null; 
+
             let outInterval = setInterval(() => {
-                if (audioToStop.volume > 0.01) {
-                    audioToStop.volume = parseFloat((audioToStop.volume - 0.01).toFixed(2));
+                if (audioToStop.volume > 0.02) {
+                    audioToStop.volume = parseFloat((audioToStop.volume - 0.02).toFixed(2));
                 } else {
                     audioToStop.pause();
-                    audioToStop.currentTime = 0;
+                    audioToStop.src = "";
                     clearInterval(outInterval);
                 }
             }, 50); 
         }
 
-        // 画面全体に「クリック（タップ）」を監視する透明な魔法をかけたよ
         document.addEventListener('click', function(e) {
-            // もしタップしたのが「リンク(aタグ)」なら、音の再生・停止はしない
             if (e.target.closest('a')) return;
             handleInteraction();
         });
 
-        function immediateStop() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-                clearInterval(fadeInterval);
-                isPlaying = false;
-            }
-        }
-
-        document.addEventListener("visibilitychange", function() {
-            if (document.visibilityState === 'hidden') immediateStop();
-        });
-        window.addEventListener("pagehide", immediateStop);
+        // スマホ対策：ページを閉じたり隠したりした瞬間「即死」させる
+        document.addEventListener("visibilitychange", () => { if (document.visibilityState === 'hidden') killAllSounds(); });
+        window.addEventListener("pagehide", killAllSounds);
+        window.addEventListener("blur", killAllSounds); // ブラウザから離れた瞬間も止める
     </script>
-
 </body>
 </html>
