@@ -12,13 +12,15 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            width: 100vw;
             margin: 0;
             font-family: "Inter", "Helvetica Neue", "Arial", "Hiragino Sans", "Meiryo", sans-serif;
             font-weight: 200;
             overflow: hidden;
             cursor: pointer;
             user-select: none;
+            touch-action: manipulation; /* スマホのタップを爆速・正確にする魔法 */
         }
 
         .main-message {
@@ -49,7 +51,7 @@
         .secret-link { color: inherit; text-decoration: none; cursor: default; }
     </style>
 </head>
-<body onclick="handleInteraction()">
+<body onclick="handleInteraction(event)">
 
     <div class="main-message">
         <p>今日も一日お疲れさまでした</p>
@@ -61,7 +63,6 @@
     </div>
 
     <script>
-        // --- 鳴らしたい音のリスト ---
         const soundList = [
             "Wind_04.mp3",
             "rain_03.mp3",
@@ -79,33 +80,30 @@
         let currentAudio = null;
         let fadeInterval = null;
 
-        function handleInteraction() {
-            // もし今音が鳴っとるなら、フェードアウトして止める
+        function handleInteraction(e) {
+            // リンクを押した時は音のオンオフをしない
+            if (e && e.target.tagName.toLowerCase() === 'a') return;
+
             if (currentAudio && !currentAudio.paused) {
                 fadeOutAndStop();
                 return;
             }
 
-            // 音を鳴らす（ランダムに選ぶ）
             const randomIndex = Math.floor(Math.random() * soundList.length);
             const selectedSound = soundList[randomIndex];
 
             const audio = new Audio(selectedSound);
             audio.loop = true;
-            audio.volume = 0; // 最初は音量0から
+            audio.volume = 0;
             
-            audio.play().catch(e => {
-                console.error("再生エラー：", e);
-            });
+            audio.play().catch(e => console.error("再生エラー：", e));
 
-            // 【極上フェードイン】
-            // 0.05秒ごとに0.01ずつ、じわじわと音量を0.2まで上げる
             clearInterval(fadeInterval);
             fadeInterval = setInterval(() => {
-                if (audio.volume < 0.19) {
+                if (audio.volume < 0.29) {
                     audio.volume = parseFloat((audio.volume + 0.01).toFixed(2));
                 } else {
-                    audio.volume = 0.2; 
+                    audio.volume = 0.3; 
                     clearInterval(fadeInterval);
                 }
             }, 50);
@@ -118,7 +116,6 @@
             const audioToStop = currentAudio;
             clearInterval(fadeInterval);
             
-            // 【極上フェードアウト】
             fadeInterval = setInterval(() => {
                 if (audioToStop.volume > 0.01) {
                     audioToStop.volume = parseFloat((audioToStop.volume - 0.01).toFixed(2));
@@ -130,16 +127,23 @@
             }, 50); 
         }
 
-        // ページが隠れたら即座にフェードアウト
-        document.addEventListener("visibilitychange", function() {
-            if (document.visibilityState === 'hidden') {
-                fadeOutAndStop();
+        // スマホで画面を閉じた・裏に回した時は【即座に】止める
+        function immediateStop() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                clearInterval(fadeInterval);
             }
+        }
+
+        document.addEventListener("visibilitychange", function() {
+            if (document.visibilityState === 'hidden') immediateStop();
         });
+        window.addEventListener("pagehide", immediateStop);
     </script>
 
     <div style="margin-top: 50px;">
-        <a href="secret.html" style="text-decoration: none; opacity: 0.1;">🏕️</a>
+        <a href="secret.html" style="text-decoration: none;">🏕️</a>
     </div>
 
 </body>
