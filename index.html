@@ -6,48 +6,15 @@
     <title>瞼の裏の土と星</title>
     <style>
         body {
-            background-color: #0a0f1e;
-            color: #fff8e1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: "Inter", "Helvetica Neue", "Arial", "Hiragino Sans", "Meiryo", sans-serif;
-            font-weight: 200;
-            overflow: hidden;
-            cursor: pointer;
-            user-select: none;
-            touch-action: manipulation;
+            background-color: #0a0f1e; color: #fff8e1;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            height: 100vh; margin: 0; font-family: "Inter", sans-serif; font-weight: 200;
+            overflow: hidden; cursor: pointer; user-select: none; touch-action: manipulation;
         }
-
-        .main-message {
-            text-align: center;
-            opacity: 0;
-            animation: fadeIn 6s ease-in-out forwards;
-        }
-
-        @keyframes fadeIn {
-            0% { opacity: 0; transform: translateY(5px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        p {
-            font-size: 1rem;
-            line-height: 2.8;
-            letter-spacing: 0.2em;
-            margin: 0;
-        }
-
-        .quiet {
-            margin-top: 40px;
-            font-size: 0.85rem;
-            color: rgba(255, 248, 225, 0.35);
-            font-weight: 100;
-        }
-
-        .secret-link { color: inherit; text-decoration: none; cursor: default; }
+        .main-message { text-align: center; opacity: 0; animation: fadeIn 6s ease-in-out forwards; }
+        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(5px); } 100% { opacity: 1; transform: translateY(0); } }
+        p { font-size: 1rem; line-height: 2.8; letter-spacing: 0.2em; margin: 0; }
+        .quiet { margin-top: 40px; font-size: 0.85rem; color: rgba(255, 248, 225, 0.35); }
     </style>
 </head>
 <body onclick="handleInteraction(event)">
@@ -58,7 +25,7 @@
         <p>時間が過ぎるのを待つ場所です</p>
         <p>何もしなくていい</p>
         <p>ただそこにいて</p>
-        <p class="quiet">(なるべくここにいる)<a href="secret.html" class="secret-link">。</a></p>
+        <p class="quiet">(なるべくここにいる)<a href="secret.html" style="color:inherit; text-decoration:none;"></a></p>
     </div>
 
     <div style="margin-top: 50px;">
@@ -69,97 +36,51 @@
         const soundList = [
             "Wind_04.mp3", "rain_03.mp3", "morning_01.mp3", "landscape_03.mp3",
             "river_04.mp3", "forest.mp3", "wave_35.mp3", "child_playing.mp3",
-            "room_ambient_03.mp3", "room_ambient_04.mp3", "library_1.mp3",
+            "room_ambient_03.mp3", "room_ambient_04.mp3", "library_1.mp3"
         ];
 
-        let currentAudio = null;
+        let audio = null;
         let fadeInterval = null;
 
-        // 全ての音を「今すぐ」抹殺する関数（重複・停止不能対策）
-        function stopAndClearAudio() {
+        // 【最重要】スマホでも確実に音を抹殺する関数
+        function killAudio() {
             clearInterval(fadeInterval);
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.src = ""; // ソースを空にしてスマホの勘違いを防ぐ
-                currentAudio.load(); // 読み込みリセット
-                currentAudio = null;
+            if (audio) {
+                audio.pause();
+                audio.src = ""; // 音楽データを空にする（これが一番効く）
+                audio.load();
+                audio = null;
             }
         }
 
         function handleInteraction(e) {
-            // リンクを押した時は音のオンオフをしない
             if (e && e.target.tagName.toLowerCase() === 'a') return;
 
-            // もし音が鳴っているなら止める（フェードアウト）
-            if (currentAudio && !currentAudio.paused) {
-                fadeOutAndStop();
+            if (audio) {
+                // 鳴っているなら、即・停止！
+                killAudio();
             } else {
-                // 鳴っていないなら、新しく鳴らす（ランダムに選んでフェードイン）
-                playNextSound();
+                // 鳴っていないなら、再生（フェードインあり）
+                const randomIndex = Math.floor(Math.random() * soundList.length);
+                audio = new Audio(soundList[randomIndex]);
+                audio.loop = true;
+                audio.volume = 0;
+                audio.play().catch(err => console.log("再生制限"));
+
+                fadeInterval = setInterval(() => {
+                    if (audio && audio.volume < 0.09) {
+                        audio.volume = parseFloat((audio.volume + 0.01).toFixed(2));
+                    } else {
+                        if (audio) audio.volume = 0.1;
+                        clearInterval(fadeInterval);
+                    }
+                }, 50);
             }
         }
 
-        function playNextSound() {
-            stopAndClearAudio(); // 新しい再生の前に必ず全リセット（重複防止）
-
-            const randomIndex = Math.floor(Math.random() * soundList.length);
-            currentAudio = new Audio(soundList[randomIndex]);
-            currentAudio.loop = true;
-            currentAudio.volume = 0; // 音量0から
-            
-            currentAudio.play().catch(e => {
-                console.error("再生エラー：", e);
-            });
-
-            // 【控えめフェードイン】
-            // 音量は控えめの 0.1 ターゲット
-            clearInterval(fadeInterval);
-            fadeInterval = setInterval(() => {
-                if (currentAudio && currentAudio.volume < 0.09) {
-                    currentAudio.volume = parseFloat((currentAudio.volume + 0.01).toFixed(2));
-                } else if (currentAudio) {
-                    currentAudio.volume = 0.1; 
-                    clearInterval(fadeInterval);
-                }
-            }, 50);
-        }
-
-        function fadeOutAndStop() {
-            if (!currentAudio) return;
-            clearInterval(fadeInterval);
-            
-            const audioToStop = currentAudio;
-            clearInterval(fadeInterval);
-            
-            // 【控えめフェードアウト】
-            fadeInterval = setInterval(() => {
-                if (audioToStop.volume > 0.02) {
-                    audioToStop.volume = parseFloat((audioToStop.volume - 0.02).toFixed(2));
-                } else {
-                    audioToStop.pause();
-                    audioToStop.src = ""; // フェードアウト完了後に抹殺
-                    clearInterval(fadeInterval);
-                    currentAudio = null;
-                }
-            }, 50); 
-        }
-
-        // スマホ対策：ページを閉じたり隠したりした瞬間「即死」させる
-        function immediateStop() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.src = ""; // 即抹殺
-                clearInterval(fadeInterval);
-                currentAudio = null;
-            }
-        }
-
-        document.addEventListener("visibilitychange", function() {
-            if (document.visibilityState === 'hidden') immediateStop();
-        });
-        window.addEventListener("pagehide", immediateStop);
-        window.addEventListener("blur", immediateStop); // ブラウザから離れた瞬間も止める
+        // ページを閉じたり隠したりした瞬間に抹殺
+        window.addEventListener("pagehide", killAudio);
+        document.addEventListener("visibilitychange", () => { if (document.hidden) killAudio(); });
     </script>
-
 </body>
 </html>
