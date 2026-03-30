@@ -92,7 +92,7 @@
 
             currentAudio = new Audio(selectedSound);
             currentAudio.loop = true;
-            currentAudio.volume = 0.5; // 音量を50%に上げたよ！
+            currentAudio.volume = 0.3; // 音量を30%に上げたよ！
             
             currentAudio.play().then(() => {
                 console.log(selectedSound + " を再生中...");
@@ -100,6 +100,17 @@
                 console.error("ファイルが見つからんみたい：", e);
             });
         }
+
+            document.addEventListener("visibilitychange", function() {
+        if (document.visibilityState === 'hidden') {
+            // ページが非表示（タブを閉じる、別のアプリを開くなど）になったら
+            if (currentAudio) {
+                currentAudio.pause(); // 音を止める
+                currentAudio.currentTime = 0; // 最初に戻す
+            }
+        }
+    });
+</script>
     </script>
 <br>
 <br>
