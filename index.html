@@ -11,24 +11,58 @@
             height: 100vh; margin: 0; font-family: "Inter", sans-serif; font-weight: 200;
             overflow: hidden; cursor: pointer; user-select: none; touch-action: manipulation;
         }
-        .main-message { text-align: center; opacity: 0; animation: fadeIn 6s ease-in-out forwards; }
+
+        .main-message { text-align: center; opacity: 0; animation: fadeIn 6s ease-in-out forwards; z-index: 2; }
         @keyframes fadeIn { 0% { opacity: 0; transform: translateY(5px); } 100% { opacity: 1; transform: translateY(0); } }
         p { font-size: 1rem; line-height: 2.8; letter-spacing: 0.2em; margin: 0; }
         .quiet { margin-top: 40px; font-size: 0.85rem; color: rgba(255, 248, 225, 0.35); }
+
+        .audio-guide {
+            margin-top: 15px; /* 上の文字との隙間 */
+            font-size: 0.6rem; /* さらに小さく */
+            color: rgba(255, 248, 225, 0.15); /* さらに薄く、気配だけ */
+            letter-spacing: 0.1em;
+        }
+
+
+        /* 🖼️ イラストを右下に置いて、ゆっくり大きく動かす設定 */
+        .my-illustration {
+            position: fixed; /* 画面上の決まった位置に固定する魔法 */
+            bottom: 100px;    /* 下から100pxの位置 */
+            right: 300px;     /* 右から300pxの位置 */
+            width: 90px;    /* 画像の大きさ（スマホでも邪魔にならんサイズ） */
+            opacity: 0.5;    /* 少し透けさせる */
+            
+            /* floatAnimという動きを、120秒(120s)かけて、なめらかに、永遠に繰り返す */
+            animation: floatAnim 120s ease-in-out infinite; 
+            
+            z-index: 1;
+            pointer-events: none; /* これがあると、画像の上をタップしても背景をタップしたことになるわい！ */
+        }
+
+        /* ふわぁ〜っと大きく上下に動くアニメーションの設計図 */
+        @keyframes floatAnim {
+            0% { transform: translateY(0px); }
+            /* -70vh は「画面の高さの70%分、上に行く」って意味やけん、かなり上まで行くで！ */
+            50% { transform: translateY(-70vh); } 
+            100% { transform: translateY(0px); }
+        }
     </style>
 </head>
 <body id="bg-body">
 
+    <img src="stone.png" alt="イラスト" class="my-illustration">
     <div class="main-message">
         <p>今日も一日お疲れさまでした</p>
         <p>ここはただ静かに、</p>
         <p>時間が過ぎるのを待つ場所です</p>
         <p>何もしなくていい</p>
         <p>ただそこにいて</p>
-        <p class="quiet">(なるべくここにいる)<a href="secret.html" style="color:inherit; text-decoration:none;">。</a></p>
+        <p class="quiet">(なるべくここにいる)<a href="secret.html" style="color:inherit; text-decoration:none;"></a></p>
+         <p class="audio-guide">タップで音が出ます</p>
     </div>
 
-    <div style="margin-top: 50px;">
+    <div style="margin-top: 50px; z-index: 2;">
         <a href="secret.html" style="text-decoration: none;">🏕️</a>
     </div>
 
@@ -36,26 +70,40 @@
         const soundList = ["Wind_04.mp3", "rain_03.mp3", "morning_01.mp3", "landscape_03.mp3", "river_04.mp3", "forest.mp3", "wave_35.mp3", "child_playing.mp3", "room_ambient_03.mp3", "room_ambient_04.mp3", "library_1.mp3"];
         let audio = null;
         let fadeInterval = null;
+        let isFadingOut = false;
 
         function killAudio() {
             clearInterval(fadeInterval);
+            isFadingOut = false;
             if (audio) {
                 audio.pause();
-                audio.src = ""; // 物理的にデータを空にする
+                audio.src = ""; 
                 audio.load();
                 audio = null;
             }
         }
 
-        // スマホでも確実にタップを拾うための判定
+        function fadeOutAndKill() {
+            if (!audio || isFadingOut) return;
+            isFadingOut = true; 
+            clearInterval(fadeInterval);
+
+            fadeInterval = setInterval(() => {
+                if (audio && audio.volume > 0.01) {
+                    audio.volume = Math.max(0, audio.volume - 0.01).toFixed(2);
+                } else {
+                    killAudio(); 
+                }
+            }, 50);
+        }
+
         document.getElementById('bg-body').addEventListener('click', function(e) {
             if (e.target.tagName.toLowerCase() === 'a') return;
 
-            // 「再生中」なら止める、それ以外なら鳴らす
-            if (audio && !audio.paused) {
-                killAudio();
-            } else {
-                killAudio(); // 念のため掃除
+            if (audio && !audio.paused && !isFadingOut) {
+                fadeOutAndKill();
+            } else if (!isFadingOut) {
+                killAudio(); 
                 const randomIndex = Math.floor(Math.random() * soundList.length);
                 audio = new Audio(soundList[randomIndex]);
                 audio.loop = true;
@@ -63,14 +111,13 @@
                 audio.play().catch(err => console.log("再生制限"));
 
                 fadeInterval = setInterval(() => {
-                    if (audio && audio.volume < 1.9) { // 音量をさらに控えめに(0.9)
+                    if (audio && audio.volume < 0.9) { 
                         audio.volume = parseFloat((audio.volume + 0.01).toFixed(2));
                     } else { clearInterval(fadeInterval); }
                 }, 50);
             }
         });
 
-        // ページを閉じる・隠す・離れる時に「絶対に」殺す
         window.addEventListener("pagehide", killAudio);
         window.addEventListener("beforeunload", killAudio);
         window.addEventListener("blur", killAudio);
