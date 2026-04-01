@@ -24,7 +24,6 @@
             letter-spacing: 0.1em;
         }
 
-
         /* 🖼️ イラストを右下に置いて、ゆっくり大きく動かす設定 */
         .my-illustration {
             position: fixed; /* 画面上の決まった位置に固定する魔法 */
@@ -70,11 +69,10 @@
         const soundList = ["Wind_04.mp3", "rain_03.mp3", "morning_01.mp3", "landscape_03.mp3", "river_04.mp3", "forest.mp3", "wave_35.mp3", "child_playing.mp3", "room_ambient_03.mp3", "room_ambient_04.mp3", "library_1.mp3"];
         let audio = null;
         let fadeInterval = null;
-        let isFadingOut = false;
 
+        // 音を即座に抹殺する関数
         function killAudio() {
             clearInterval(fadeInterval);
-            isFadingOut = false;
             if (audio) {
                 audio.pause();
                 audio.src = ""; 
@@ -83,26 +81,14 @@
             }
         }
 
-        function fadeOutAndKill() {
-            if (!audio || isFadingOut) return;
-            isFadingOut = true; 
-            clearInterval(fadeInterval);
-
-            fadeInterval = setInterval(() => {
-                if (audio && audio.volume > 0.01) {
-                    audio.volume = Math.max(0, audio.volume - 0.01).toFixed(2);
-                } else {
-                    killAudio(); 
-                }
-            }, 50);
-        }
-
         document.getElementById('bg-body').addEventListener('click', function(e) {
             if (e.target.tagName.toLowerCase() === 'a') return;
 
-            if (audio && !audio.paused && !isFadingOut) {
-                fadeOutAndKill();
-            } else if (!isFadingOut) {
+            if (audio && !audio.paused) {
+                // 鳴っているなら、即座に止める
+                killAudio();
+            } else {
+                // 鳴っていないなら、新しく再生（フェードインは残しとるよ）
                 killAudio(); 
                 const randomIndex = Math.floor(Math.random() * soundList.length);
                 audio = new Audio(soundList[randomIndex]);
@@ -118,6 +104,7 @@
             }
         });
 
+        // 画面を閉じたり裏に回った時は即座に止める
         window.addEventListener("pagehide", killAudio);
         window.addEventListener("beforeunload", killAudio);
         window.addEventListener("blur", killAudio);
